@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+
+import redis
+import re,string,os,time,sys,datetime
+from optparse import OptionParser
+
+def timestamp_to_datetime(response):
+    "Converts a unix timestamp to a Python datetime object"
+    if not response:
+        return None
+    try:
+        response = int(response)
+    except ValueError:
+        return None
+    return datetime.datetime.fromtimestamp(response)
+
+def timestamp_to_string(response,format="%Y-%m-%d %H:%M:%S"):
+    return timestamp_to_datetime(response).strftime(format)
+
+def formatPar(key,value):
+    return ' %30s   =%20s'% (key, str(value)) 
+
+def formatPar2(key,value):
+    return '%s=%s'% (key, str(value)) 
+
+def print_log(log_text):
+    split_str = ' '
+    time_str = '[' + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ']'
+    print time_str + split_str + split_str + log_text   
+
+def getArgs():
+    usage = '%prog -H hostname -w password [ <interval> [ <count> ] ]'
+    parser = OptionParser(usage)
+    parser.add_option("-H", "--host", dest="host",default='localhost',help="The redis server you want to connect to")
+    parser.add_option("-w", "--password", dest="passwd", help="The password used to connect to the redis server",default="")
+    parser.add_option("-p", "--port", dest="port", default=6379,help="The port the redis server is using")
+    parser.add_option("-t", "--timeout", dest="timeout", default=10,help="socket timeout to redis server")
+    (options, args) = parser.parse_args()
+    return options, args
+
+lastCommand=0
+info_need={'connected_clients':'clients',
+           'role':'role  ',
+           'total_commands_processed':'commands ',
+           #'total_connections_received':'connects ',
+           #'uptime_in_seconds':'uptime ',
+           'used_memory_human':'memory_used ',
+           'used_memory_peak_human':'memory_peak',
+           'last_save_time':'last_save_time'
+           }
+
+def connRedis(options):
+    try:
+        db = redis.Redis(host="%s" % (options.host), password="%s" % (options.passwd), port=int(options.port), socket_timeout=int(options.timeout))
+    except Exception as e:
+        print_log('CRITICAL %s' % (e))
+        sys.exit(2)
+    return db
+
+def getRedisInfo(db):    
+    try:
+        info_cmd = db.info()
+    except Exception as e:
+        print_log('CRITICAL %s' % (e))
+        sys.exit(2)
+    return info_cmd
+
+def printRedisInfo(info):
+    global lastCommand
+    keys = info_need.keys()
+    #keys.sort()
+    restr=[]
+    for key in keys:
+        ktype = type(info[key])
+        if ktype is int or ktype is str or ktype is float:
+            value=info[key]
+            if key=='last_save_time':
+                value=timestamp_to_string(int(value))
+            if key=='total_commands_processed':
+                v=int(value)
+                value=v-lastCommand
+                lastCommand=v
+            len = info_need[key].__len__()
+            restr.append('%*s'%(len,str(value)))
+    print_log('  '.join(restr))
+
+def main():
+    global lastCommand
+    (options,args) = getArgs()
+    db = connRedis(options)
+    info = getRedisInfo(db)
+    lastCommand = int(info['total_commands_processed'])
+    inteval = 1
+    times = 1
+    if args.__len__()==1:
+        inteval=int(args[0])
+        times=pow(2,31)
+    elif args.__len__()==2:
+        inteval=int(args[0])
+        times=int(args[1])    
+    cnt=0
+    print_log('  '.join(info_need.values()))
+    while cnt<times:
+        cnt+=1
+        info = getRedisInfo(db)
+        printRedisInfo(info)
+        time.sleep(inteval)
+
+if __name__ == '__main__':
+    main()
