@@ -4,8 +4,8 @@ redstat
 redis stat tools like iostat using python
 
 使用方法如下：
-[admin@vm-dw-174-101 redis-dump-load]$ ./redstat -h
-Usage: redstat -H hostname -w password [ [ ] ]
+$ ./redstat -h
+Usage: redstat -H hostname -w password [ <interval> [ <count> ] ]
 
 Options:
 -h, --help show this help message and exit
@@ -26,3 +26,5 @@ $./redstat -H 10.20.174.140 -w redis 1 10
 [2012-05-30 15:59:26] 159 1 1.71G master 1 3.78G 2012-05-04 13:48:40
 [2012-05-30 15:59:27] 159 1 1.71G master 1 3.78G 2012-05-04 13:48:40
 [2012-05-30 15:59:28] 159 1 1.71G master 1 3.78G 2012-05-04 13:48:40
+
+
