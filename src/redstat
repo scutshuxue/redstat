@@ -14,7 +14,7 @@ def timestamp_to_datetime(response):
         return None
     return datetime.datetime.fromtimestamp(response)
 
-def timestamp_to_string(response,format="%Y-%m-%d %H:%M:%S"):
+def timestamp_to_string(response,format="%m-%d %H:%M:%S"):
     return timestamp_to_datetime(response).strftime(format)
 
 def formatPar(key,value):
@@ -41,10 +41,10 @@ def getArgs():
 lastCommand=0
 info_need={'connected_clients':'clients',
            'role':'role  ',
-           'total_commands_processed':'commands ',
+           'total_commands_processed':'commands',
            #'total_connections_received':'connects ',
            #'uptime_in_seconds':'uptime ',
-           'used_memory_human':'memory_used ',
+           'used_memory_human':'memory_used',
            'used_memory_peak_human':'memory_peak',
            'last_save_time':'last_save_time'
            }
@@ -67,6 +67,7 @@ def getRedisInfo(db):
 
 def printRedisInfo(info):
     global lastCommand
+    #print info
     keys = info_need.keys()
     #keys.sort()
     restr=[]
@@ -82,7 +83,19 @@ def printRedisInfo(info):
                 lastCommand=v
             len = info_need[key].__len__()
             restr.append('%*s'%(len,str(value)))
-    print_log('  '.join(restr))
+    keys=info.keys()
+    keys.sort()
+    for key in keys:
+        ktype = type(info[key])
+        if ktype is dict:
+            len=' keys,expires'.__len__()
+            value = info[key]
+            #print key,value
+            if key[0:2]=='db':
+                restr.append('%*s'%(len,key + ":" + str(value['keys'])+","+str(value['expires'])))
+    print_log(' '.join(restr))
+
+#def getInfo
 
 def main():
     global lastCommand
@@ -99,7 +112,7 @@ def main():
         inteval=int(args[0])
         times=int(args[1])    
     cnt=0
-    print_log('  '.join(info_need.values()))
+    print_log(' '.join(info_need.values()) + " keys,expires")
     while cnt<times:
         cnt+=1
         info = getRedisInfo(db)
